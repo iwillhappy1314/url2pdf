@@ -4,11 +4,8 @@ const fs = require("fs/promises");
 const path = require('path');
 const Koa = require('koa');
 const app = new Koa();
-const extname = path.extname;
 const router = require('@koa/router')();
 const send = require('koa-send');
-const crypto = require('crypto');
-const md5 = crypto.createHash('md5');
 
 app.use(router.routes());
 
@@ -17,17 +14,16 @@ router.get('/', generate);
 async function generate(ctx) {
     const query = ctx.request.query;
     let filename = await generatePDF(query.url);
-
-    const fpath = path.join('data/' + filename);
+    const file_path = path.join('data/' + filename);
 
     ctx.set('Content-disposition', 'attachment;filename=' + filename);
     ctx.set('Content-type', 'application/pdf');
 
-    ctx.attachment(fpath);
-    await send(ctx, fpath);
+    ctx.attachment(file_path, []);
+    await send(ctx, file_path);
 }
 
-app.listen(3030);
+app.listen(3000);
 
 async function generatePDF(url) {
     console.log(url);
@@ -84,11 +80,25 @@ async function generatePDF(url) {
 
     const pdfBytes = await pdfDoc.save();
 
-    let filename = md5.update(url).digest('hex') + '.pdf';
+    let filename = 'pdf.pdf';
+
+    const order_id = get_order_id(url);
+
+    if(order_id){
+        filename = order_id + '.pdf';
+    }
 
     await fs.writeFile("./data/" + filename, pdfBytes);
 
     await browser.close();
 
     return filename;
+}
+
+
+function get_order_id(order_url){
+    const url = new URL(order_url);
+    const params = new URLSearchParams(url.search);
+
+    return params.get('order_id');
 }
